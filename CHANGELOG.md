@@ -1,0 +1,20 @@
+- Tách file App.tsx thành các component nhỏ (Home, Welcome, MainHub, ChatTab, ReportTab).
+- Tạo thư mục services chứa logic gọi AI và Google Sheet.
+- Tạo thư mục types chứa định nghĩa kiểu dữ liệu.
+- Thêm trang chủ (Home) trước khi vào phòng tư vấn.
+- Xóa toàn bộ chú thích trong code theo yêu cầu.
+- Tạo file cau-truc-google-sheet.md và ma.gs.
+- Tạo file src/config.ts để lưu GOOGLE_SCRIPT_URL và cập nhật src/services/sheet.ts để gửi dữ liệu thật qua fetch nếu có link.
+- Cập nhật App.tsx: Xóa MainHub, thêm Header toàn cục.
+- Cập nhật Home.tsx: Tách 2 tính năng thành 2 nút riêng biệt kèm mô tả chi tiết.
+- Cập nhật Welcome.tsx: Nhận thêm prop `feature` để hiển thị tiêu đề phù hợp.
+- Cập nhật ChatTab.tsx: Thêm logic đếm ngược 30s (cooldown) sau mỗi lần gửi tin nhắn.
+- Xóa MainHub.tsx vì không còn sử dụng tab.
+- Cập nhật Header.tsx: Thêm thanh menu luôn hiển thị ở trên.
+- Cập nhật cau-truc-google-sheet.md và ma.gs: Thêm cột Session ID, Ticket Code, Status và sheet Quotes. Hỗ trợ GET request.
+- Cập nhật types/index.ts: Thêm trường `mood` vào `UserIdentity`.
+- Cập nhật services/sheet.ts: Thêm hàm `checkTicketStatus` và `getDailyQuote`.
+- Cập nhật Home.tsx: Hiển thị Lời chúc mỗi ngày (Daily Quote).
+- Cập nhật Welcome.tsx: Thêm bước chọn Nhật ký cảm xúc (Mood Tracker).
+- Cập nhật ChatTab.tsx: Tạo Session ID và cung cấp cảm xúc cho AI.
+- Cập nhật ReportTab.tsx: Tạo Mã tra cứu báo cáo và thêm tính năng Tra cứu trạng thái.
