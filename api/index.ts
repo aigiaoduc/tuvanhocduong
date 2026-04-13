@@ -1,5 +1,5 @@
 import express from "express";
-import Cerebras from '@cerebras/cerebras_cloud_sdk';
+import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -33,18 +33,18 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-// Lazy initialize Cerebras client to avoid crashing if API key is missing on startup
-let cerebrasClient: Cerebras | null = null;
+// Lazy initialize Gemini client
+let geminiClient: GoogleGenAI | null = null;
 
-function getCerebrasClient() {
-  if (!cerebrasClient) {
-    const apiKey = process.env['CEREBRAS_API_KEY'];
+function getGeminiClient() {
+  if (!geminiClient) {
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn("CEREBRAS_API_KEY is missing. AI features will not work.");
+      console.warn("GEMINI_API_KEY is missing. AI features will not work.");
     }
-    cerebrasClient = new Cerebras({ apiKey });
+    geminiClient = new GoogleGenAI({ apiKey });
   }
-  return cerebrasClient;
+  return geminiClient;
 }
 
 const SYSTEM_INSTRUCTION = `
@@ -62,18 +62,18 @@ app.post("/api/chat", async (req, res) => {
       return res.status(429).json({ error: 'Rate limit exceeded. Maximum 5 messages per minute.' });
     }
 
-    const client = getCerebrasClient();
+    const client = getGeminiClient();
     const { prompt } = req.body;
     
-    const completionCreateResponse = await client.chat.completions.create({
-      messages: [
-        { role: 'system', content: SYSTEM_INSTRUCTION },
-        { role: 'user', content: prompt }
-      ],
-      model: 'qwen-3-235b-a22b-instruct-2507', 
+    const response = await client.models.generateContent({
+      model: 'gemma-4-26b-a4b-it', 
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+      }
     });
     
-    res.json({ text: completionCreateResponse.choices[0].message.content });
+    res.json({ text: response.text });
   } catch (error) {
     console.error("Chat API Error:", error);
     res.status(500).json({ error: 'Failed to generate response' });
@@ -87,7 +87,7 @@ app.post("/api/moderate", async (req, res) => {
       return res.status(429).json({ error: 'Rate limit exceeded. Maximum 5 messages per minute.' });
     }
 
-    const client = getCerebrasClient();
+    const client = getGeminiClient();
     const { text } = req.body;
     const prompt = `Bạn là hệ thống kiểm duyệt nội dung tự động cho môi trường học đường. 
 Nhiệm vụ của bạn là đánh giá xem văn bản sau có vi phạm các lỗi: tục tĩu, chửi thề, bạo lực, trêu đùa cợt nhả, spam, vô nghĩa hay không.
@@ -100,12 +100,12 @@ Trả lời CHÍNH XÁC 1 từ duy nhất: "HOP_LE" hoặc "KHONG_HOP_LE".
 
 Văn bản cần kiểm duyệt: "${text}"`;
 
-    const completionCreateResponse = await client.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'qwen-3-235b-a22b-instruct-2507',
+    const response = await client.models.generateContent({
+      model: 'gemma-4-26b-a4b-it',
+      contents: prompt,
     });
     
-    const result = completionCreateResponse.choices[0].message.content?.trim().toUpperCase() || "";
+    const result = response.text?.trim().toUpperCase() || "";
     if (result.includes("KHONG_HOP_LE")) {
       res.json({ valid: false });
     } else {

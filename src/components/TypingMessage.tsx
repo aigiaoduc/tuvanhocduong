@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export default function TypingMessage({ text, isTyping, onComplete }: { text: string, isTyping?: boolean, onComplete?: () => void }) {
   const [displayedText, setDisplayedText] = useState(isTyping ? '' : text);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (!isTyping) {
@@ -15,12 +20,12 @@ export default function TypingMessage({ text, isTyping, onComplete }: { text: st
       i++;
       if (i >= text.length) {
         clearInterval(interval);
-        if (onComplete) onComplete();
+        if (onCompleteRef.current) onCompleteRef.current();
       }
     }, 15); // 15ms per character
 
     return () => clearInterval(interval);
-  }, [text, isTyping, onComplete]);
+  }, [text, isTyping]);
 
   return <>{displayedText}</>;
 }

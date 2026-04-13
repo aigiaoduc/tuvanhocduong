@@ -136,7 +136,7 @@ Chuyên gia:`;
           <div className="space-y-6">
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-muted/50 text-foreground rounded-tl-sm'}`}>
+                <div className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-slate-100 text-slate-800 rounded-tl-sm'}`}>
                   {msg.role === 'model' ? (
                     <TypingMessage 
                       text={msg.text} 
@@ -176,7 +176,7 @@ Chuyên gia:`;
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="p-4 rounded-2xl bg-muted/50 text-foreground rounded-tl-sm italic text-sm text-muted-foreground">
+                <div className="p-4 rounded-2xl bg-slate-100 text-slate-800 rounded-tl-sm italic text-sm text-slate-500">
                   Chuyên gia đang suy nghĩ...
                 </div>
               </div>
