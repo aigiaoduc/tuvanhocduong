@@ -97,8 +97,6 @@ export default function ChatTab({ identity, onSpamDetected }: { identity: UserId
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     const history = messages.map(m => `${m.role === 'user' ? 'Học sinh' : 'Giáo viên'}: ${m.text}`).join('\n');
     
     const systemPrompt = `Bạn là Cô giáo tư vấn tâm lý học đường tên là Minh (Cô Minh). Bạn luôn thân thiện, gần gũi, thấu hiểu và đưa ra lời khuyên hữu ích cho học sinh.
@@ -122,6 +120,17 @@ Cô Minh:`;
     setCooldown(30);
   };
 
+  const getUserBubbleColor = () => {
+    switch (identity.mood) {
+      case 'Vui vẻ': return 'bg-green-600 text-white';
+      case 'Bình thường': return 'bg-blue-600 text-white';
+      case 'Buồn bã': return 'bg-purple-600 text-white';
+      case 'Lo âu': return 'bg-slate-600 text-white';
+      case 'Tức giận': return 'bg-red-600 text-white';
+      default: return 'bg-blue-600 text-white';
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full p-4">
       <div className="mb-4">
@@ -133,7 +142,7 @@ Cô Minh:`;
           <div className="space-y-6">
             {messages.map((msg) => (
               <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-slate-100 text-slate-800 rounded-tl-sm'}`}>
+                <div className={`p-4 rounded-2xl max-w-[85%] sm:max-w-[75%] ${msg.role === 'user' ? `${getUserBubbleColor()} rounded-tr-sm` : 'bg-slate-100 text-slate-800 rounded-tl-sm'}`}>
                   {msg.role === 'model' ? (
                     <TypingMessage 
                       text={msg.text} 

@@ -16,13 +16,14 @@ export default function TypingMessage({ text, isTyping, onComplete }: { text: st
 
     let i = 0;
     const interval = setInterval(() => {
-      setDisplayedText(text.substring(0, i + 1));
-      i++;
+      // Speed up by adding 2 characters at a time
+      i += 2;
+      setDisplayedText(text.substring(0, i));
       if (i >= text.length) {
         clearInterval(interval);
         if (onCompleteRef.current) onCompleteRef.current();
       }
-    }, 15); // 15ms per character
+    }, 10); // 10ms per 2 characters (effectively 5ms per char)
 
     return () => clearInterval(interval);
   }, [text, isTyping]);

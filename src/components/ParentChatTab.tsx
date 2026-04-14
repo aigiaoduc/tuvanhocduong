@@ -97,8 +97,6 @@ export default function ParentChatTab({ onSpamDetected }: { onSpamDetected: () =
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
     const history = messages.map(m => `${m.role === 'user' ? 'Phụ huynh' : 'Chuyên gia'}: ${m.text}`).join('\n');
     
     const systemPrompt = `Bạn là Chuyên gia tâm lý học đường tư vấn cho Phụ huynh học sinh. Bạn luôn điềm đạm, thấu hiểu, tôn trọng và đưa ra những lời khuyên thiết thực, có cơ sở khoa học tâm lý để giúp phụ huynh kết nối với con cái.
