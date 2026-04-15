@@ -22,7 +22,6 @@ export default function ChatTab({ identity, onSpamDetected }: { identity: UserId
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -71,23 +70,38 @@ export default function ChatTab({ identity, onSpamDetected }: { identity: UserId
     }
   }, [messages, isLoading]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (cooldown > 0) {
-      timer = setTimeout(() => setCooldown(c => c - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [cooldown]);
+  const CRISIS_KEYWORDS = [
+    'tự tử', 'muốn chết', 'không muốn sống', 'rạch tay', 'kết liễu', 
+    'nhảy lầu', 'uống thuốc ngủ', 'tuyệt vọng', 'giết mình', 'chết đi cho xong'
+  ];
+
+  const checkCrisis = (text: string) => {
+    const lowerText = text.toLowerCase();
+    return CRISIS_KEYWORDS.some(keyword => lowerText.includes(keyword));
+  };
 
   const handleSend = async (textOverride?: string) => {
     const userText = (typeof textOverride === 'string' ? textOverride : input).trim();
-    if (!userText || isLoading || cooldown > 0) return;
+    if (!userText || isLoading) return;
 
     setInput('');
     
     const newUserMsg: Message = { id: Date.now().toString(), role: 'user', text: userText };
     setMessages((prev) => [...prev, newUserMsg]);
     setIsLoading(true);
+
+    // Lớp bảo vệ 1: Chặn từ khóa khủng hoảng (Crisis Interception)
+    if (checkCrisis(userText)) {
+      setIsLoading(false);
+      const crisisMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'model',
+        text: '⚠️ CẢNH BÁO AN TOÀN: Cô Minh nhận thấy em đang trải qua một cảm xúc rất khó khăn và có những suy nghĩ gây hại cho bản thân. Trí tuệ nhân tạo không được phép tư vấn trong tình huống này. \n\nXin em hãy dừng lại, hít thở sâu và gọi ngay cho **Tổng đài Quốc gia Bảo vệ Trẻ em 111** (miễn phí 24/7) hoặc chia sẻ ngay với người lớn mà em tin tưởng. Cuộc sống của em rất quý giá, luôn có người sẵn sàng giúp đỡ em!',
+        isTyping: true
+      };
+      setMessages(prev => [...prev, crisisMsg]);
+      return;
+    }
 
     // Moderate content before sending to AI
     const isValid = await moderateContent(userText);
@@ -117,7 +131,6 @@ Cô Minh:`;
 
     await sendCounselingData(identity, sessionId, userText, modelText);
     setIsLoading(false);
-    setCooldown(30);
   };
 
   const getUserBubbleColor = () => {
@@ -171,7 +184,7 @@ Cô Minh:`;
                       variant="outline"
                       className="rounded-2xl text-sm text-primary border-primary/20 hover:bg-primary/10 hover:border-primary/30 text-left h-auto py-2.5 px-4 whitespace-normal transition-all"
                       onClick={() => handleSend(prompt)}
-                      disabled={isLoading || cooldown > 0}
+                      disabled={isLoading}
                     >
                       {prompt}
                     </Button>
@@ -204,16 +217,12 @@ Cô Minh:`;
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={isLoading || cooldown > 0}
-              placeholder={cooldown > 0 ? `Vui lòng đợi ${cooldown}s để gửi tiếp...` : isListening ? "Đang nghe..." : "Nhập tin nhắn..."}
+              disabled={isLoading}
+              placeholder={isListening ? "Đang nghe..." : "Nhập tin nhắn..."}
               className="flex-1 h-12 rounded-full px-6 bg-white"
             />
-            <Button type="submit" disabled={!input.trim() || isLoading || cooldown > 0} className="h-12 rounded-full px-6">
-              {cooldown > 0 ? (
-                <><Clock className="w-5 h-5 mr-2" /> {cooldown}s</>
-              ) : (
-                <><Send className="w-5 h-5 mr-2" /> Gửi</>
-              )}
+            <Button type="submit" disabled={!input.trim() || isLoading} className="h-12 rounded-full px-6">
+              <><Send className="w-5 h-5 mr-2" /> Gửi</>
             </Button>
           </form>
         </div>

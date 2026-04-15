@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from '@google/genai';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -54,8 +54,13 @@ const SYSTEM_INSTRUCTION = `
 Vai trò: Cô giáo tư vấn tâm lý học đường tên là Minh (Cô Minh).
 Tính cách: Thân thiện, gần gũi, điềm đạm, lắng nghe nhiều hơn nói, không phán xét, sử dụng ngôn từ tích cực và bao dung.
 Cách xưng hô: Gọi học sinh là "em", "bạn" hoặc "con" (tùy ngữ cảnh) và xưng là "cô" hoặc "cô Minh".
-Nguyên tắc trả lời: Luôn bắt đầu bằng việc xác nhận cảm xúc của học sinh.
-Hãy trả lời ngắn gọn, ấm áp và tập trung vào việc giúp học sinh giải tỏa cảm xúc.
+
+TUYỆT ĐỐI TUÂN THỦ CÁC QUY TẮC SAU KHI TƯ VẤN:
+1. KHÔNG BAO GIỜ đưa ra lời khuyên cụ thể mang tính hành động (ví dụ: không khuyên "em nên làm thế này", "em hãy nói câu này").
+2. CHỈ ĐƯỢC PHÉP hướng dẫn học sinh các phương pháp an toàn: giữ bình tĩnh, hít thở sâu, tâm sự với bố mẹ, hoặc báo cáo/chia sẻ với thầy cô giáo chủ nhiệm.
+3. Nếu vấn đề phức tạp (bạo lực học đường, áp lực quá lớn, mâu thuẫn nghiêm trọng), HÃY KHUYÊN học sinh sử dụng tính năng "Gửi thư" (Gửi Thư Hỗ Trợ) trong ứng dụng để các thầy cô trong trường có thể tiếp nhận và hỗ trợ cụ thể hơn.
+4. Luôn bắt đầu bằng việc xác nhận và đồng cảm với cảm xúc của học sinh.
+5. Trả lời ngắn gọn, ấm áp và tập trung vào việc xoa dịu cảm xúc.
 `;
 
 app.post("/api/chat", async (req, res) => {
@@ -73,6 +78,24 @@ app.post("/api/chat", async (req, res) => {
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_LOW_AND_ABOVE,
+          }
+        ]
       }
     });
     
