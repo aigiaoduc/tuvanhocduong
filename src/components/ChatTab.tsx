@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserIdentity, Message } from '../types';
 import { generateAIResponse, moderateContent } from '../services/ai';
 import { sendCounselingData } from '../services/sheet';
-import { Send, Clock, Sparkles, Mic, MicOff } from 'lucide-react';
+import { Send, Clock, Sparkles, Mic, MicOff, AlertTriangle, Phone } from 'lucide-react';
 import TypingMessage from './TypingMessage';
 
 const QUICK_PROMPTS = [
@@ -22,6 +22,7 @@ export default function ChatTab({ identity, onSpamDetected }: { identity: UserId
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCrisis, setIsCrisis] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -93,13 +94,7 @@ export default function ChatTab({ identity, onSpamDetected }: { identity: UserId
     // Lớp bảo vệ 1: Chặn từ khóa khủng hoảng (Crisis Interception)
     if (checkCrisis(userText)) {
       setIsLoading(false);
-      const crisisMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: '⚠️ CẢNH BÁO AN TOÀN: Cô Minh nhận thấy em đang trải qua một cảm xúc rất khó khăn và có những suy nghĩ gây hại cho bản thân. Trí tuệ nhân tạo không được phép tư vấn trong tình huống này. \n\nXin em hãy dừng lại, hít thở sâu và gọi ngay cho **Tổng đài Quốc gia Bảo vệ Trẻ em 111** (miễn phí 24/7) hoặc chia sẻ ngay với người lớn mà em tin tưởng. Cuộc sống của em rất quý giá, luôn có người sẵn sàng giúp đỡ em!',
-        isTyping: true
-      };
-      setMessages(prev => [...prev, crisisMsg]);
+      setIsCrisis(true);
       return;
     }
 
@@ -184,7 +179,7 @@ Cô Minh:`;
                       variant="outline"
                       className="rounded-2xl text-sm text-primary border-primary/20 hover:bg-primary/10 hover:border-primary/30 text-left h-auto py-2.5 px-4 whitespace-normal transition-all"
                       onClick={() => handleSend(prompt)}
-                      disabled={isLoading}
+                      disabled={isLoading || isCrisis}
                     >
                       {prompt}
                     </Button>
@@ -193,9 +188,14 @@ Cô Minh:`;
               </div>
             )}
 
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="p-4 rounded-2xl bg-slate-100 text-slate-800 rounded-tl-sm italic text-sm text-slate-500">
+            {isLoading && messages[messages.length - 1]?.role === 'user' && (
+              <div className="flex justify-start animate-in fade-in duration-300">
+                <div className="p-4 rounded-2xl bg-slate-100 text-slate-800 rounded-tl-sm italic text-sm text-slate-500 flex items-center gap-3">
+                  <div className="flex gap-1">
+                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  </div>
                   Cô Minh đang suy nghĩ...
                 </div>
               </div>
@@ -217,16 +217,39 @@ Cô Minh:`;
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={isLoading}
-              placeholder={isListening ? "Đang nghe..." : "Nhập tin nhắn..."}
+              disabled={isLoading || isCrisis}
+              placeholder={isCrisis ? "Tính năng chat đã bị khóa để đảm bảo an toàn." : isListening ? "Đang nghe..." : "Nhập tin nhắn..."}
               className="flex-1 h-12 rounded-full px-6 bg-white"
             />
-            <Button type="submit" disabled={!input.trim() || isLoading} className="h-12 rounded-full px-6">
+            <Button type="submit" disabled={!input.trim() || isLoading || isCrisis} className="h-12 rounded-full px-6">
               <><Send className="w-5 h-5 mr-2" /> Gửi</>
             </Button>
           </form>
         </div>
       </div>
+
+      {/* Crisis Modal */}
+      {isCrisis && (
+        <div className="fixed inset-0 z-[9999] bg-red-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative animate-in zoom-in-95 duration-300 border-4 border-red-500">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto">
+              <AlertTriangle className="w-10 h-10 text-red-600" />
+            </div>
+            <h3 className="text-2xl font-bold text-center text-red-600 mb-4 uppercase tracking-wider">
+              Cảnh Báo An Toàn
+            </h3>
+            <p className="text-center text-slate-700 mb-6 text-base leading-relaxed">
+              Cô Minh nhận thấy em đang trải qua một cảm xúc rất khó khăn và có những suy nghĩ gây hại cho bản thân. Trí tuệ nhân tạo không được phép tư vấn trong tình huống này.
+              <br/><br/>
+              Xin em hãy dừng lại, hít thở sâu và gọi ngay cho <strong>Tổng đài Quốc gia Bảo vệ Trẻ em 111</strong> (miễn phí 24/7) hoặc chia sẻ ngay với người lớn mà em tin tưởng. Cuộc sống của em rất quý giá, luôn có người sẵn sàng giúp đỡ em!
+            </p>
+            <a href="tel:111" className="flex items-center justify-center w-full h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-red-200 transition-all hover:scale-105">
+              <Phone className="w-6 h-6 mr-2" />
+              Gọi ngay 111
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
