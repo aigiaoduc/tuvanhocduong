@@ -140,7 +140,7 @@ export default function App() {
         {(view === 'identity-chat' || view === 'identity-report') && (
           <Welcome onSelectIdentity={handleIdentitySelect} feature={view === 'identity-chat' ? 'chat' : 'report'} onBack={handleGoBack} />
         )}
-        {view === 'chat' && identity && <ChatTab identity={identity} onSpamDetected={handleSpamDetected} />}
+        {view === 'chat' && identity && <ChatTab identity={identity} onSpamDetected={handleSpamDetected} onGoHome={handleGoBack} onGoToReport={() => setView('report')} />}
         {view === 'report' && identity && <ReportTab identity={identity} />}
         {view === 'track' && <TrackTab />}
         {view === 'gratitude' && <GratitudeTab />}

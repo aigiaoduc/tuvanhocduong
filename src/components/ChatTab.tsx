@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserIdentity, Message } from '../types';
 import { generateAIResponse, moderateContent } from '../services/ai';
 import { sendCounselingData } from '../services/sheet';
-import { Send, Clock, Sparkles, Mic, MicOff, AlertTriangle, Phone } from 'lucide-react';
+import { Send, Clock, Sparkles, Mic, MicOff, AlertTriangle, Phone, Mail, Home } from 'lucide-react';
 import TypingMessage from './TypingMessage';
 
 const QUICK_PROMPTS = [
@@ -15,7 +15,7 @@ const QUICK_PROMPTS = [
   "Em cảm thấy hơi lạc lõng và khó hòa nhập với các bạn trong lớp..."
 ];
 
-export default function ChatTab({ identity, onSpamDetected }: { identity: UserIdentity, onSpamDetected: () => void }) {
+export default function ChatTab({ identity, onSpamDetected, onGoHome, onGoToReport }: { identity: UserIdentity, onSpamDetected: () => void, onGoHome: () => void, onGoToReport: () => void }) {
   const [sessionId] = useState(() => `SS-${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
   const [messages, setMessages] = useState<Message[]>([
     { id: 'welcome', role: 'model', text: `Chào em, cô Minh thấy hôm nay em đang cảm thấy ${identity.mood?.toLowerCase() || 'bình thường'}. Cô ở đây để lắng nghe. Em muốn chia sẻ điều gì không?` }
@@ -243,10 +243,28 @@ Cô Minh:`;
               <br/><br/>
               Xin em hãy dừng lại, hít thở sâu và gọi ngay cho <strong>Tổng đài Quốc gia Bảo vệ Trẻ em 111</strong> (miễn phí 24/7) hoặc chia sẻ ngay với người lớn mà em tin tưởng. Cuộc sống của em rất quý giá, luôn có người sẵn sàng giúp đỡ em!
             </p>
-            <a href="tel:111" className="flex items-center justify-center w-full h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-red-200 transition-all hover:scale-105">
+            <a href="tel:111" className="flex items-center justify-center w-full h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-red-200 transition-all hover:scale-105 mb-4">
               <Phone className="w-6 h-6 mr-2" />
               Gọi ngay 111
             </a>
+
+            <div className="space-y-3">
+              <button 
+                onClick={onGoToReport}
+                className="w-full flex flex-col items-center justify-center p-3 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors text-amber-900"
+              >
+                <span className="font-semibold flex items-center"><Mail className="w-4 h-4 mr-2" /> Gửi thư cho thầy cô</span>
+                <span className="text-xs text-amber-700 mt-1 text-center">Cô Minh khuyên em nên dùng tính năng này để các thầy cô có thể hỗ trợ em tốt nhất.</span>
+              </button>
+              
+              <button 
+                onClick={onGoHome}
+                className="w-full flex flex-col items-center justify-center p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-colors text-slate-700"
+              >
+                <span className="font-semibold flex items-center"><Home className="w-4 h-4 mr-2" /> Về trang chủ</span>
+                <span className="text-xs text-slate-500 mt-1 text-center">Quay lại màn hình chính để sử dụng các tính năng khác.</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
