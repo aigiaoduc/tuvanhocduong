@@ -11,8 +11,8 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
   
   // Modals state
-  const [viewingChat, setViewingChat] = useState<{ type: string, content: string, sender?: string, receiver?: string } | null>(null);
-  const [editingReport, setEditingReport] = useState<{ rowIndex: number, currentReply: string } | null>(null);
+  const [viewingChat, setViewingChat] = useState<{ type: string, content: string, sender?: string, receiver?: string, reply?: string, conversation?: any[] } | null>(null);
+  const [editingReport, setEditingReport] = useState<{ rowIndex: number, currentReply: string, conversation?: any[] } | null>(null);
   const [replyText, setReplyText] = useState('');
 
   const [deletingItem, setDeletingItem] = useState<{ sheetName: string, rowIndex: number } | null>(null);
@@ -62,15 +62,39 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     );
   }
 
+  const groupedReports = data?.reports?.reduce((acc: any, row: any) => {
+    const ticketCode = row[1];
+    if (!acc[ticketCode]) {
+      acc[ticketCode] = [];
+    }
+    acc[ticketCode].push(row);
+    return acc;
+  }, {});
+
+  const uniqueReports = groupedReports ? Object.values(groupedReports).map((group: any) => {
+    group.sort((a: any, b: any) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+    const latestRow = group[group.length - 1];
+    return {
+      timestamp: latestRow[0],
+      ticketCode: latestRow[1],
+      id: latestRow[2],
+      type: latestRow[3],
+      latestContent: latestRow[4],
+      latestStatus: latestRow[5],
+      rowIndex: latestRow[6],
+      fullConversation: group
+    };
+  }) : [];
+
   const stats = data ? {
     counseling: data.counseling?.length || 0,
-    reports: data.reports?.length || 0,
+    reports: uniqueReports.length || 0,
     gratitude: data.gratitude?.length || 0,
     parents: data.parentCounseling?.length || 0
   } : { counseling: 0, reports: 0, gratitude: 0, parents: 0 };
 
-  const reportStatusData = data?.reports.reduce((acc: any, row: any) => {
-    const reply = row[5] || '';
+  const reportStatusData = uniqueReports.reduce((acc: any, item: any) => {
+    const reply = item.latestStatus || '';
     const isDefault = reply.includes('Cô đã tiếp nhận thông tin');
     const status = isDefault ? 'Chưa xử lý' : 'Đã xử lý';
     acc[status] = (acc[status] || 0) + 1;
@@ -257,8 +281,10 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {data?.[activeTab === 'parent' ? 'parentCounseling' : activeTab]?.map((row: any, idx: number) => {
-                      const rowIndex = row[row.length - 1];
+                    {(activeTab === 'reports' ? uniqueReports : data?.[activeTab === 'parent' ? 'parentCounseling' : activeTab])?.map((item: any, idx: number) => {
+                      const isReport = activeTab === 'reports';
+                      const row = isReport ? [item.timestamp, item.ticketCode, item.id, item.type, item.latestContent, item.latestStatus, item.rowIndex] : item;
+                      const rowIndex = isReport ? item.rowIndex : row[row.length - 1];
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap text-slate-500">{new Date(row[0]).toLocaleString('vi-VN')}</td>
@@ -315,13 +341,20 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                           )}
 
                           <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                            {(activeTab === 'counseling' || activeTab === 'parent' || activeTab === 'gratitude') && (
-                              <Button variant="ghost" size="icon" onClick={() => setViewingChat({ type: activeTab, content: activeTab === 'counseling' ? row[4] : (activeTab === 'gratitude' ? row[3] : row[2]), sender: row[1], receiver: row[2] })} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                            {(activeTab === 'counseling' || activeTab === 'parent' || activeTab === 'gratitude' || activeTab === 'reports') && (
+                              <Button variant="ghost" size="icon" onClick={() => setViewingChat({ 
+                                type: activeTab, 
+                                content: activeTab === 'counseling' ? row[4] : (activeTab === 'gratitude' ? row[3] : (activeTab === 'reports' ? row[4] : row[2])), 
+                                sender: row[1], 
+                                receiver: row[2],
+                                reply: activeTab === 'reports' ? row[5] : undefined,
+                                conversation: isReport ? item.fullConversation : undefined
+                              })} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                                 <Eye className="w-4 h-4" />
                               </Button>
                             )}
                             {activeTab === 'reports' && (
-                              <Button variant="ghost" size="icon" onClick={() => { setEditingReport({ rowIndex, currentReply: row[5] }); setReplyText(row[5]); }} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingReport({ rowIndex, currentReply: row[5], conversation: item.fullConversation }); setReplyText(row[5].includes('Cô đã tiếp nhận thông tin') ? '' : row[5]); }} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                                 <Edit className="w-4 h-4" />
                               </Button>
                             )}
@@ -332,7 +365,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         </tr>
                       );
                     })}
-                    {(!data?.[activeTab === 'parent' ? 'parentCounseling' : activeTab] || data[activeTab === 'parent' ? 'parentCounseling' : activeTab].length === 0) && (
+                    {(!(activeTab === 'reports' ? uniqueReports : data?.[activeTab === 'parent' ? 'parentCounseling' : activeTab]) || (activeTab === 'reports' ? uniqueReports : data[activeTab === 'parent' ? 'parentCounseling' : activeTab]).length === 0) && (
                       <tr>
                         <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
                           Chưa có dữ liệu nào.
@@ -353,7 +386,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b">
               <h3 className="text-lg font-bold">
-                {viewingChat.type === 'gratitude' ? 'Chi tiết Thư Biết Ơn' : 'Chi tiết đoạn chat'}
+                {viewingChat.type === 'gratitude' ? 'Chi tiết Thư Biết Ơn' : viewingChat.type === 'reports' ? 'Chi tiết Thư Hỗ Trợ' : 'Chi tiết đoạn chat'}
               </h3>
               <Button variant="ghost" size="icon" onClick={() => setViewingChat(null)}>
                 <X className="w-5 h-5" />
@@ -375,6 +408,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 
                 const isParent = viewingChat.type === 'parent';
                 const isGratitude = viewingChat.type === 'gratitude';
+                const isReport = viewingChat.type === 'reports';
                 
                 return (
                   <>
@@ -396,6 +430,27 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                             "{userText}"
                           </div>
                         </div>
+                      </div>
+                    ) : isReport ? (
+                      <div className="space-y-4">
+                        {viewingChat.conversation?.map((msg: any, idx: number) => (
+                          <React.Fragment key={idx}>
+                            <div className="flex justify-end">
+                              <div className="max-w-[85%] p-3 rounded-2xl bg-blue-600 text-white rounded-tr-sm shadow-sm">
+                                <p className="text-xs font-bold mb-1 opacity-70">Học sinh</p>
+                                <div className="whitespace-pre-wrap text-sm">{msg[4]}</div>
+                              </div>
+                            </div>
+                            {msg[5] && !msg[5].includes('Cô đã tiếp nhận thông tin') && (
+                              <div className="flex justify-start">
+                                <div className="max-w-[85%] p-3 rounded-2xl bg-white border text-slate-800 rounded-tl-sm shadow-sm">
+                                  <p className="text-xs font-bold mb-1 opacity-70">Phản hồi của Thầy/Cô</p>
+                                  <div className="whitespace-pre-wrap text-sm">{msg[5]}</div>
+                                </div>
+                              </div>
+                            )}
+                          </React.Fragment>
+                        ))}
                       </div>
                     ) : (
                       <>
@@ -433,9 +488,31 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 <X className="w-5 h-5" />
               </Button>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 flex-1 overflow-y-auto bg-slate-50">
+              {editingReport.conversation && editingReport.conversation.length > 0 && (
+                <div className="space-y-4 mb-4">
+                  {editingReport.conversation.map((msg: any, idx: number) => (
+                    <React.Fragment key={idx}>
+                      <div className="flex justify-end">
+                        <div className="max-w-[85%] p-3 rounded-2xl bg-blue-600 text-white rounded-tr-sm shadow-sm">
+                          <p className="text-xs font-bold mb-1 opacity-70">Học sinh</p>
+                          <div className="whitespace-pre-wrap text-sm">{msg[4]}</div>
+                        </div>
+                      </div>
+                      {msg[5] && !msg[5].includes('Cô đã tiếp nhận thông tin') && idx < editingReport.conversation!.length - 1 && (
+                        <div className="flex justify-start">
+                          <div className="max-w-[85%] p-3 rounded-2xl bg-white border text-slate-800 rounded-tl-sm shadow-sm">
+                            <p className="text-xs font-bold mb-1 opacity-70">Phản hồi của Thầy/Cô</p>
+                            <div className="whitespace-pre-wrap text-sm">{msg[5]}</div>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
               <textarea
-                className="w-full min-h-[200px] p-4 border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm leading-relaxed"
+                className="w-full min-h-[150px] p-4 border rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm leading-relaxed"
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Nhập phản hồi của Thầy/Cô dành cho học sinh..."
