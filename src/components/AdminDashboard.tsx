@@ -86,11 +86,55 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
     };
   }) : [];
 
+  const groupedCounseling = data?.counseling?.reduce((acc: any, row: any) => {
+    const sessionId = row[1];
+    if (!acc[sessionId]) {
+      acc[sessionId] = [];
+    }
+    acc[sessionId].push(row);
+    return acc;
+  }, {});
+
+  const uniqueCounseling = groupedCounseling ? Object.values(groupedCounseling).map((group: any) => {
+    group.sort((a: any, b: any) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+    const latestRow = group[group.length - 1];
+    return {
+      timestamp: latestRow[0],
+      sessionId: latestRow[1],
+      id: latestRow[2],
+      type: latestRow[3],
+      latestContent: latestRow[4],
+      rowIndex: latestRow[5],
+      fullConversation: group
+    };
+  }) : [];
+
+  const groupedParents = data?.parentCounseling?.reduce((acc: any, row: any) => {
+    const sessionId = row[1];
+    if (!acc[sessionId]) {
+      acc[sessionId] = [];
+    }
+    acc[sessionId].push(row);
+    return acc;
+  }, {});
+
+  const uniqueParents = groupedParents ? Object.values(groupedParents).map((group: any) => {
+    group.sort((a: any, b: any) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
+    const latestRow = group[group.length - 1];
+    return {
+      timestamp: latestRow[0],
+      sessionId: latestRow[1],
+      latestContent: latestRow[2],
+      rowIndex: latestRow[3],
+      fullConversation: group
+    };
+  }) : [];
+
   const stats = data ? {
-    counseling: data.counseling?.length || 0,
+    counseling: uniqueCounseling.length || 0,
     reports: uniqueReports.length || 0,
     gratitude: data.gratitude?.length || 0,
-    parents: data.parentCounseling?.length || 0
+    parents: uniqueParents.length || 0
   } : { counseling: 0, reports: 0, gratitude: 0, parents: 0 };
 
   const reportStatusData = uniqueReports.reduce((acc: any, item: any) => {
@@ -281,10 +325,24 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {(activeTab === 'reports' ? uniqueReports : data?.[activeTab === 'parent' ? 'parentCounseling' : activeTab])?.map((item: any, idx: number) => {
+                    {(activeTab === 'reports' ? uniqueReports : activeTab === 'counseling' ? uniqueCounseling : activeTab === 'parent' ? uniqueParents : data?.gratitude)?.map((item: any, idx: number) => {
                       const isReport = activeTab === 'reports';
-                      const row = isReport ? [item.timestamp, item.ticketCode, item.id, item.type, item.latestContent, item.latestStatus, item.rowIndex] : item;
-                      const rowIndex = isReport ? item.rowIndex : row[row.length - 1];
+                      const isCounseling = activeTab === 'counseling';
+                      const isParent = activeTab === 'parent';
+                      const isGratitude = activeTab === 'gratitude';
+                      
+                      let row;
+                      if (isReport) {
+                        row = [item.timestamp, item.ticketCode, item.id, item.type, item.latestContent, item.latestStatus, item.rowIndex];
+                      } else if (isCounseling) {
+                        row = [item.timestamp, item.sessionId, item.id, item.type, item.latestContent, item.rowIndex];
+                      } else if (isParent) {
+                        row = [item.timestamp, item.sessionId, item.latestContent, item.rowIndex];
+                      } else {
+                        row = item;
+                      }
+                      
+                      const rowIndex = isGratitude ? row[row.length - 1] : item.rowIndex;
                       return (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap text-slate-500">{new Date(row[0]).toLocaleString('vi-VN')}</td>
@@ -348,7 +406,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                                 sender: row[1], 
                                 receiver: row[2],
                                 reply: activeTab === 'reports' ? row[5] : undefined,
-                                conversation: isReport ? item.fullConversation : undefined
+                                conversation: (isReport || isCounseling || isParent) ? item.fullConversation : undefined
                               })} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -365,7 +423,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                         </tr>
                       );
                     })}
-                    {(!(activeTab === 'reports' ? uniqueReports : data?.[activeTab === 'parent' ? 'parentCounseling' : activeTab]) || (activeTab === 'reports' ? uniqueReports : data[activeTab === 'parent' ? 'parentCounseling' : activeTab]).length === 0) && (
+                    {(!(activeTab === 'reports' ? uniqueReports : activeTab === 'counseling' ? uniqueCounseling : activeTab === 'parent' ? uniqueParents : data?.gratitude) || (activeTab === 'reports' ? uniqueReports : activeTab === 'counseling' ? uniqueCounseling : activeTab === 'parent' ? uniqueParents : data?.gratitude).length === 0) && (
                       <tr>
                         <td colSpan={10} className="px-6 py-12 text-center text-slate-500">
                           Chưa có dữ liệu nào.
@@ -409,6 +467,7 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                 const isParent = viewingChat.type === 'parent';
                 const isGratitude = viewingChat.type === 'gratitude';
                 const isReport = viewingChat.type === 'reports';
+                const isCounseling = viewingChat.type === 'counseling';
                 
                 return (
                   <>
@@ -431,45 +490,63 @@ export default function AdminDashboard({ onLogout }: { onLogout: () => void }) {
                           </div>
                         </div>
                       </div>
-                    ) : isReport ? (
+                    ) : (isReport || isCounseling || isParent) && viewingChat.conversation ? (
                       <div className="space-y-4">
-                        {viewingChat.conversation?.map((msg: any, idx: number) => (
-                          <React.Fragment key={idx}>
-                            <div className="flex justify-end">
-                              <div className="max-w-[85%] p-3 rounded-2xl bg-blue-600 text-white rounded-tr-sm shadow-sm">
-                                <p className="text-xs font-bold mb-1 opacity-70">Học sinh</p>
-                                <div className="whitespace-pre-wrap text-sm">{msg[4]}</div>
-                              </div>
-                            </div>
-                            {msg[5] && !msg[5].includes('Cô đã tiếp nhận thông tin') && (
-                              <div className="flex justify-start">
-                                <div className="max-w-[85%] p-3 rounded-2xl bg-white border text-slate-800 rounded-tl-sm shadow-sm">
-                                  <p className="text-xs font-bold mb-1 opacity-70">Phản hồi của Thầy/Cô</p>
-                                  <div className="whitespace-pre-wrap text-sm">{msg[5]}</div>
+                        {viewingChat.conversation?.map((msg: any, idx: number) => {
+                          if (isReport) {
+                            return (
+                              <React.Fragment key={idx}>
+                                <div className="flex justify-end">
+                                  <div className="max-w-[85%] p-3 rounded-2xl bg-blue-600 text-white rounded-tr-sm shadow-sm">
+                                    <p className="text-xs font-bold mb-1 opacity-70">Học sinh</p>
+                                    <div className="whitespace-pre-wrap text-sm">{msg[4]}</div>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </React.Fragment>
-                        ))}
+                                {msg[5] && !msg[5].includes('Cô đã tiếp nhận thông tin') && (
+                                  <div className="flex justify-start">
+                                    <div className="max-w-[85%] p-3 rounded-2xl bg-white border text-slate-800 rounded-tl-sm shadow-sm">
+                                      <p className="text-xs font-bold mb-1 opacity-70">Phản hồi của Thầy/Cô</p>
+                                      <div className="whitespace-pre-wrap text-sm">{msg[5]}</div>
+                                    </div>
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            );
+                          } else {
+                            const content = isCounseling ? msg[4] : msg[2];
+                            let userText = '';
+                            let aiPart = '';
+                            
+                            if (content.includes(' | AI: ')) {
+                              const parts = content.split(' | AI: ');
+                              userText = parts[0].replace(/^(User|Parent):\s*/, '');
+                              aiPart = parts.slice(1).join(' | AI: ');
+                            } else {
+                              userText = content;
+                            }
+                            
+                            return (
+                              <React.Fragment key={idx}>
+                                <div className="flex justify-end">
+                                  <div className="max-w-[85%] p-3 rounded-2xl bg-blue-600 text-white rounded-tr-sm shadow-sm">
+                                    <p className="text-xs font-bold mb-1 opacity-70">{isParent ? 'Phụ huynh' : 'Học sinh'}</p>
+                                    <div className="whitespace-pre-wrap text-sm">{userText}</div>
+                                  </div>
+                                </div>
+                                {aiPart && (
+                                  <div className="flex justify-start">
+                                    <div className="max-w-[85%] p-3 rounded-2xl bg-white border text-slate-800 rounded-tl-sm shadow-sm">
+                                      <p className="text-xs font-bold mb-1 opacity-70">AI Tư vấn</p>
+                                      <div className="whitespace-pre-wrap text-sm">{aiPart}</div>
+                                    </div>
+                                  </div>
+                                )}
+                              </React.Fragment>
+                            );
+                          }
+                        })}
                       </div>
-                    ) : (
-                      <>
-                        <div className="flex justify-end">
-                          <div className="max-w-[85%] p-3 rounded-2xl bg-blue-600 text-white rounded-tr-sm shadow-sm">
-                            <p className="text-xs font-bold mb-1 opacity-70">{isParent ? 'Phụ huynh' : 'Học sinh'}</p>
-                            <div className="whitespace-pre-wrap text-sm">{userText}</div>
-                          </div>
-                        </div>
-                        {aiPart && (
-                          <div className="flex justify-start">
-                            <div className="max-w-[85%] p-3 rounded-2xl bg-white border text-slate-800 rounded-tl-sm shadow-sm">
-                              <p className="text-xs font-bold mb-1 opacity-70">AI Tư vấn</p>
-                              <div className="whitespace-pre-wrap text-sm">{aiPart}</div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    ) : null}
                   </>
                 );
               })()}
